@@ -1,30 +1,28 @@
-from typing import Annotated, Literal
-
-from pydantic import BaseModel
-from langchain_core.messages import BaseMessage
+from typing import Annotated, Literal, Optional, List
+from pydantic import BaseModel, Field
+from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 
-
 class InterviewState(BaseModel):
-    """Full interview state — tracks conversation, stage, and progress."""
-
-    messages: Annotated[list[BaseMessage], add_messages] = []
-
-    student_name: str | None = None
-    selected_topic: str | None = None
-
-    stage: Literal[
-        "ask_name",
-        "extract_name",
-        "ask_topic",
-        "extract_topic",
-        "ask_question",
-        "await_answer",
-        "end",
-    ] = "ask_name"
-
+    messages: Annotated[List[AnyMessage], add_messages] = Field(default_factory=list)
+    
+    student_name: str = ""
+    college: str = ""
+    course: str = ""
+    
+    topic: Optional[str] = None
+    difficulty: Optional[Literal["beginner", "medium", "hard"]] = None
+    
+    question_pool: List[str] = Field(default_factory=list)
+    asked_questions: List[str] = Field(default_factory=list)
+    current_question: Optional[str] = None
+    
     question_count: int = 0
     max_questions: int = 3
-
-    intent: Literal["continue", "quit"] = "continue"
-    should_end: bool = False
+    
+    last_user_input: Optional[str] = None
+    intent: Optional[str] = None
+    
+    short_feedback: Optional[str] = None
+    correction: Optional[str] = None
+    correct: Optional[bool] = None

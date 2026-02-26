@@ -1,5 +1,0 @@
-"""Convenience runner — so you can just do: python run.py"""
-from app.main import run
-
-if __name__ == "__main__":
-    run()

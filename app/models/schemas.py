@@ -1,19 +1,24 @@
-from typing import Literal
-
+from typing import Literal, Optional, List
 from pydantic import BaseModel
 
+class IdentityIntent(BaseModel):
+    intent: Literal["valid", "not_valid", "repeat", "silence"]
 
-class NameExtraction(BaseModel):
-    """Structured output for extracting a student's first name."""
-    name: str
+class TopicIntent(BaseModel):
+    intent: Literal["topic_valid", "repeat", "quit", "silence"]
+    extracted_topic: Optional[str] = None
 
+class DifficultyIntent(BaseModel):
+    intent: Literal["difficulty_answer", "repeat", "quit", "unknown"]
+    extracted_difficulty: Optional[Literal["beginner", "medium", "hard"]] = None
 
-class TopicExtraction(BaseModel):
-    """Structured output for extracting a technical topic."""
-    topic: str
+class QuestionBatch(BaseModel):
+    questions: List[str]
 
+class QuestionIntent(BaseModel):
+    intent: Literal["answer", "repeat", "quit", "unknown"]
 
-class EvalIntentOutput(BaseModel):
-    """Combined feedback + intent detection from a student's answer."""
-    feedback: str
-    intent: Literal["continue", "quit"]
+class EvaluationSchema(BaseModel):
+    correct: bool
+    short_feedback: str
+    correction: str | None

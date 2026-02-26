@@ -1,34 +1,32 @@
 import os
 
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
-_api_key = os.getenv("GOOGLE_API_KEY")
+_api_key = os.getenv("OPENAI_API_KEY")
 
 # Main LLM — used for asking questions and evaluating answers
-_llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
+_llm = ChatOpenAI(
+    model="gpt-4o-mini",
     temperature=0.4,
-    max_output_tokens=1024,
-    google_api_key=_api_key,
+    max_tokens=1024,
+    api_key=_api_key,
 )
 
 # Fast LLM — used for simple extractions (name, topic) with fewer tokens
-_llm_fast = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
+_llm_fast = ChatOpenAI(
+    model="gpt-4o-mini",
     temperature=0.0,
-    max_output_tokens=256,
-    google_api_key=_api_key,
+    max_tokens=256,
+    api_key=_api_key,
 )
 
-
-def get_llm() -> ChatGoogleGenerativeAI:
+def get_llm() -> ChatOpenAI:
     """Return the main LLM for questions and evaluation."""
     return _llm
 
-
-def get_fast_llm() -> ChatGoogleGenerativeAI:
+def get_fast_llm() -> ChatOpenAI:
     """Return the fast LLM for lightweight extractions."""
     return _llm_fast
