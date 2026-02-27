@@ -1,3 +1,4 @@
+import asyncio
 """Entry point — runs the interview workflow in the terminal."""
 
 import uuid
@@ -10,7 +11,7 @@ from langchain_core.messages import AIMessage
 
 QUIT_KEYWORDS = {"quit", "exit", "stop", "end", "bye", "done"}
 
-def run():
+async def run():
     graph = build_graph()
     config = {"configurable": {"thread_id": f"interview-{uuid.uuid4().hex[:8]}"}}
 
@@ -23,7 +24,7 @@ def run():
     }
 
     # Start the graph
-    graph.invoke(initial_state, config=config)
+    await graph.ainvoke(initial_state, config=config)
     
     # Helper to print AI messages
     def print_ai_messages(state_snapshot, start_idx):
@@ -36,16 +37,16 @@ def run():
                 displayed += 1
         return len(all_msgs)
 
-    state = graph.get_state(config)
+    state = await graph.aget_state(config)
     msg_count = print_ai_messages(state, 0)
 
     while True:
-        state = graph.get_state(config)
+        state = await graph.aget_state(config)
         if not state.next:
             print("\n✅ Interview complete!")
             break
 
-        user_input = input("\n👤 You: ").strip()
+        user_input = (await asyncio.to_thread(input, "\n👤 You: ")).strip()
         
         # Manual quit
         if any(kw in user_input.lower() for kw in QUIT_KEYWORDS):
@@ -53,14 +54,14 @@ def run():
             break
 
         # Inject the user input cleanly
-        graph.update_state(config, {"last_user_input": user_input})
+        await graph.aupdate_state(config, {"last_user_input": user_input})
         
         print("\n⏳ Thinking...")
         # Continue the graph execution
-        graph.invoke(None, config=config)
+        await graph.ainvoke(None, config=config)
         
-        state = graph.get_state(config)
+        state = await graph.aget_state(config)
         msg_count = print_ai_messages(state, msg_count)
 
 if __name__ == "__main__":
-    run()
+    asyncio.run(run())

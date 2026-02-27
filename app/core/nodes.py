@@ -13,36 +13,36 @@ from app.core.prompts import (
 )
 from app.services.llm_service import get_llm, get_fast_llm
 
-def load_candidate_context(state: InterviewState) -> dict:
+async def load_candidate_context(state: InterviewState) -> dict:
     return {"messages": [SystemMessage(content=build_system_prompt(
         state.student_name, state.college, state.course
     ))]}
 
-def intro_hook(state: InterviewState) -> dict:
+async def intro_hook(state: InterviewState) -> dict:
     response = f"Hello! This is the interview agent. Am I speaking to {state.student_name}?"
     return {"messages": [AIMessage(content=response)]}
 
-def quit_call(state: InterviewState) -> dict:
+async def quit_call(state: InterviewState) -> dict:
     msg = "Sorry about that. I'll end the call here. Have a good day."
     return {"messages": [AIMessage(content=msg)]}
 
-def end_call(state: InterviewState) -> dict:
+async def end_call(state: InterviewState) -> dict:
     msg = "Thank you! Have a great day, Goodbye!"
     return {"messages": [AIMessage(content=msg)]}
 
-def goodbye_node(state: InterviewState) -> dict:
+async def goodbye_node(state: InterviewState) -> dict:
     msg = "Thanks for your time. You'll receive detailed feedback soon. All the best."
     return {"messages": [AIMessage(content=msg)]}
 
 # Identity
-def identity_router(state: InterviewState) -> dict:
+async def identity_router(state: InterviewState) -> dict:
     user_text = state.last_user_input or ""
     structured_llm = get_fast_llm().with_structured_output(IdentityIntent)
     
     # Try multiple times in case of structured output failure
     for attempt in range(3):
         try:
-            result = structured_llm.invoke(
+            result = await structured_llm.ainvoke(
                 f"""
                 The assistant asked: "Am I speaking to {state.student_name}?"
                 Classify the user's reply.
@@ -60,7 +60,7 @@ def identity_router(state: InterviewState) -> dict:
             pass
     return {"intent": "repeat", "messages": [HumanMessage(content=user_text)]}
 
-def identity_repeat(state: InterviewState) -> dict:
+async def identity_repeat(state: InterviewState) -> dict:
     if state.intent == "silence":
         msg = "Hello? Can you hear me?"
     else:
@@ -69,11 +69,11 @@ def identity_repeat(state: InterviewState) -> dict:
 
 
 # Topic Flow
-def topic_ask(state: InterviewState) -> dict:
+async def topic_ask(state: InterviewState) -> dict:
     msg = "Which topic would you like to be interviewed on today?"
     return {"messages": [AIMessage(content=msg)]}
 
-def topic_router(state: InterviewState) -> dict:
+async def topic_router(state: InterviewState) -> dict:
     user_text = (state.last_user_input or "").strip()
     if user_text == "":
         return {"intent": "silence", "messages": [HumanMessage(content=user_text)]}
@@ -81,7 +81,7 @@ def topic_router(state: InterviewState) -> dict:
     topic_llm = get_fast_llm().with_structured_output(TopicIntent)
     for attempt in range(3):
         try:
-            result = topic_llm.invoke([
+            result = await topic_llm.ainvoke([
                 SystemMessage(content=TOPIC_ROUTER_SYSTEM_PROMPT),
                 HumanMessage(content=f'The assistant asked:\n"Which topic would you like to be interviewed on today?"\n\nUser reply:\n"{user_text}"')
             ])
@@ -95,7 +95,7 @@ def topic_router(state: InterviewState) -> dict:
             pass
     return {"intent": "repeat", "messages": [HumanMessage(content=user_text)]}
 
-def topic_repeat(state: InterviewState) -> dict:
+async def topic_repeat(state: InterviewState) -> dict:
     if state.intent == "silence":
         msg = "Hello? Can you hear me?"
     else:
@@ -104,11 +104,11 @@ def topic_repeat(state: InterviewState) -> dict:
 
 
 # Difficulty Flow
-def difficulty_ask(state: InterviewState) -> dict:
+async def difficulty_ask(state: InterviewState) -> dict:
     msg = "What difficulty level would you prefer — beginner, medium, or hard?"
     return {"messages": [AIMessage(content=msg)]}
 
-def difficulty_router(state: InterviewState) -> dict:
+async def difficulty_router(state: InterviewState) -> dict:
     user_text = (state.last_user_input or "").strip()
     if user_text == "":
         return {"intent": "silence", "messages": [HumanMessage(content=user_text)]}
@@ -116,7 +116,7 @@ def difficulty_router(state: InterviewState) -> dict:
     difficulty_llm = get_fast_llm().with_structured_output(DifficultyIntent)
     for attempt in range(3):
         try:
-            result = difficulty_llm.invoke([
+            result = await difficulty_llm.ainvoke([
                 SystemMessage(content=DIFFICULTY_ROUTER_SYSTEM_PROMPT),
                 HumanMessage(content=f'The assistant asked:\n"What difficulty level would you prefer — beginner, medium, or hard?"\n\nUser reply:\n"{user_text}"')
             ])
@@ -132,7 +132,7 @@ def difficulty_router(state: InterviewState) -> dict:
             pass
     return {"intent": "repeat", "messages": [HumanMessage(content=user_text)]}
 
-def difficulty_repeat(state: InterviewState) -> dict:
+async def difficulty_repeat(state: InterviewState) -> dict:
     if state.intent == "silence":
         msg = "Hello? Can you hear me?"
     else:
@@ -141,13 +141,13 @@ def difficulty_repeat(state: InterviewState) -> dict:
 
 
 # Question Flow
-def prepare_question_pool(state: InterviewState) -> dict:
+async def prepare_question_pool(state: InterviewState) -> dict:
     question_gen_llm = get_llm().with_structured_output(QuestionBatch)
     prompt = QUESTION_POOL_SYSTEM_PROMPT.format(topic=state.topic, difficulty=state.difficulty)
-    result = question_gen_llm.invoke(prompt)
+    result = await question_gen_llm.ainvoke(prompt)
     return {"question_pool": result.questions, "asked_questions": [], "question_count": 0}
 
-def ask_question(state: InterviewState) -> dict:
+async def ask_question(state: InterviewState) -> dict:
     remaining_questions = [q for q in state.question_pool if q not in state.asked_questions]
     if not remaining_questions:
         msg = "Looks like we're out of questions."
@@ -160,7 +160,7 @@ def ask_question(state: InterviewState) -> dict:
         "messages": [AIMessage(content=question)]
     }
 
-def question_intent_router(state: InterviewState) -> dict:
+async def question_intent_router(state: InterviewState) -> dict:
     user_text = (state.last_user_input or "").strip()
     if user_text == "":
         return {"intent": "silence", "messages": [HumanMessage(content=user_text)]}
@@ -168,7 +168,7 @@ def question_intent_router(state: InterviewState) -> dict:
     question_router_llm = get_fast_llm().with_structured_output(QuestionIntent)
     for attempt in range(3):
         try:
-            result = question_router_llm.invoke([
+            result = await question_router_llm.ainvoke([
                 SystemMessage(content=QUESTION_ROUTER_SYSTEM_PROMPT),
                 HumanMessage(content=f'Question: {state.current_question}\n\nUser reply:\n"{user_text}"')
             ])
@@ -180,19 +180,19 @@ def question_intent_router(state: InterviewState) -> dict:
             pass
     return {"intent": "answer", "messages": [HumanMessage(content=user_text)]}
 
-def question_repeat(state: InterviewState) -> dict:
+async def question_repeat(state: InterviewState) -> dict:
     if state.intent == "silence":
         msg = "Hello? Can you hear me?"
     else:
         msg = f"No problem. {state.current_question}"
     return {"messages": [AIMessage(content=msg)]}
 
-def evaluate_answer(state: InterviewState) -> dict:
+async def evaluate_answer(state: InterviewState) -> dict:
     evaluation_llm = get_fast_llm().with_structured_output(EvaluationSchema)
     
     for attempt in range(3):
         try:
-            result = evaluation_llm.invoke([
+            result = await evaluation_llm.ainvoke([
                 SystemMessage(content=EVALUATION_SYSTEM_PROMPT),
                 HumanMessage(content=f"Question: {state.current_question}\nAnswer: {state.last_user_input}")
             ])
